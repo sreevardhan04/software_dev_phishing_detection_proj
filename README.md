@@ -1,4 +1,6 @@
-Phishing Detection and Mitigation System
+Phishing Detection and Mitigation System 
+
+SRS document is provided in docs folder
  Project Overview
 
 Phishing attacks are one of the most common cybersecurity threats, targeting users by deceiving them into revealing sensitive information such as passwords, banking details, and personal data.
