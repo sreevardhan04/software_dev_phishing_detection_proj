@@ -1,0 +1,35 @@
+Automated phising detection and mitigation system .
+
+functional requirements:
+
+1) System should be able to take the input from users (or) access email by itself
+
+2)analyze the emails by ml model and keywords( like verify, urgent , login etc..)
+
+3)if any suspicious mail is detected then block the mail or alert the user.
+
+4)mitigation (prevent the users from opening it (or) quarantine the mails.
+
+
+non functional :
+
+Non-Functional Requirements
+
+
+Performance:
+
+Response time < 3 seconds.
+
+Security:
+
+Secure handling of user input.
+
+Usability:
+
+Simple and intuitive UI
+
+5. Future Enhancements:
+
+Browser extension support
+Email client integration
+Real-time blacklist updates
