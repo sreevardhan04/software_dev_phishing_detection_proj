@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 
 type Status = {
   type: "idle" | "success" | "error";
@@ -9,12 +9,88 @@ type Status = {
 
 type View = "check-link" | "check-email" | "check-blocklist" | "view-analysis";
 
+type Analysis = {
+  _id: string;
+  url: string;
+  riskScore: number;
+  classification: "Safe" | "Suspicious" | "High Risk";
+  domainAnalysis: {
+    domainAge: string;
+    whoisInfo: string;
+    suspiciousPatterns: string[];
+    similarity: string;
+  };
+  sslAnalysis: {
+    httpsUsed: boolean;
+    certificateIssuer: string;
+    certificateValidity: string;
+    suspiciousIndicators: string[];
+  };
+  urlStructure: {
+    urlLength: number;
+    usesIpAddress: boolean;
+    suspiciousCharacters: string[];
+    multipleRedirects: boolean;
+  };
+  contentAnalysis: {
+    hasLoginForms: boolean;
+    requestsSensitiveInfo: boolean;
+    suspiciousKeywords: string[];
+    brandImpersonation: string;
+  };
+  pageBehavior: {
+    automaticRedirects: boolean;
+    hiddenElements: boolean;
+    suspiciousScripts: boolean;
+    externalResources: boolean;
+  };
+  reputationChecks: {
+    blacklistStatus: string;
+    knownPhishingReports: number;
+    malwareDetected: boolean;
+  };
+  visualSimilarity: {
+    imitatesPopularServices: boolean;
+    logoSpoofing: boolean;
+    details: string;
+  };
+  riskIndicators: string[];
+  verdict: string;
+  recommendedAction: string;
+  createdAt: string;
+};
+
 export default function HomePage() {
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<Status>({ type: "idle", message: "" });
   const [currentView, setCurrentView] = useState<View>("check-link");
+  const [analyses, setAnalyses] = useState<Analysis[]>([]);
+  const [analyseLoading, setAnalyseLoading] = useState(false);
+  const [expandedAnalysisId, setExpandedAnalysisId] = useState<string | null>(null);
+
+  // Fetch analyses when View Analysis tab is open
+  useEffect(() => {
+    if (currentView === "view-analysis") {
+      fetchAnalyses();
+    }
+  }, [currentView]);
+
+  const fetchAnalyses = async () => {
+    setAnalyseLoading(true);
+    try {
+      const res = await fetch("/api/get-analyses");
+      const data = await res.json();
+      if (data.success) {
+        setAnalyses(data.analyses);
+      }
+    } catch (error) {
+      console.error("Failed to fetch analyses:", error);
+    } finally {
+      setAnalyseLoading(false);
+    }
+  };
 
   const handleSubmitUrl = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -209,13 +285,166 @@ export default function HomePage() {
         );
       case "view-analysis":
         return (
-          <div className="w-full max-w-md rounded-xl bg-gray-700 p-8 shadow-2xl border border-gray-600">
-            <h1 className="mb-2 text-center text-2xl font-semibold text-gray-100">
-              View Analysis
-            </h1>
-            <p className="mb-6 text-center text-sm text-gray-300">
-              Feature coming soon: View stored URLs and emails with analysis.
-            </p>
+          <div className="w-full max-w-4xl">
+            <div className="rounded-xl bg-gray-700 p-8 shadow-2xl border border-gray-600">
+              <h1 className="mb-2 text-center text-2xl font-semibold text-gray-100">
+                Analysis Reports
+              </h1>
+              <p className="mb-6 text-center text-sm text-gray-300">
+                Detailed phishing risk analysis for submitted URLs
+              </p>
+
+              {analyseLoading ? (
+                <p className="text-center text-gray-300">Loading analyses...</p>
+              ) : analyses.length === 0 ? (
+                <p className="text-center text-gray-300">
+                  No analyses yet. Submit URLs from the "Check Link" tab to see reports here.
+                </p>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {analyses.map((analysis) => (
+                    <div
+                      key={analysis._id}
+                      className="bg-gray-800 rounded-lg border border-gray-600 p-4 cursor-pointer hover:border-blue-500 transition"
+                      onClick={() =>
+                        setExpandedAnalysisId(
+                          expandedAnalysisId === analysis._id ? null : analysis._id
+                        )
+                      }
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-gray-300 truncate">{analysis.url}</p>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            analysis.classification === "Safe"
+                              ? "bg-green-900 text-green-200"
+                              : analysis.classification === "Suspicious"
+                              ? "bg-yellow-900 text-yellow-200"
+                              : "bg-red-900 text-red-200"
+                          }`}
+                        >
+                          {analysis.classification}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="flex-1 bg-gray-700 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all ${
+                              analysis.riskScore < 30
+                                ? "bg-green-500"
+                                : analysis.riskScore < 70
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                            }`}
+                            style={{ width: `${analysis.riskScore}%` }}
+                          />
+                        </div>
+                        <span className="text-gray-300 text-sm font-semibold">
+                          {analysis.riskScore}/100
+                        </span>
+                      </div>
+
+                      {expandedAnalysisId === analysis._id && (
+                        <div className="mt-4 pt-4 border-t border-gray-600 text-sm text-gray-300 space-y-3">
+                          <div>
+                            <h3 className="font-semibold text-gray-100 mb-1">Verdict</h3>
+                            <p>{analysis.verdict}</p>
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold text-gray-100 mb-1">
+                              Recommended Action
+                            </h3>
+                            <p className="text-blue-400">{analysis.recommendedAction}</p>
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold text-gray-100 mb-1">
+                              Risk Indicators
+                            </h3>
+                            <ul className="list-disc list-inside space-y-1">
+                              {analysis.riskIndicators.map((indicator, idx) => (
+                                <li key={idx}>{indicator}</li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <h4 className="font-semibold text-gray-100">Domain Analysis</h4>
+                              <p>
+                                Similarity:{" "}
+                                <span className="text-gray-400">
+                                  {analysis.domainAnalysis.similarity}
+                                </span>
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-100">SSL/TLS Security</h4>
+                              <p>
+                                HTTPS:{" "}
+                                <span className={analysis.sslAnalysis.httpsUsed ? "text-green-400" : "text-red-400"}>
+                                  {analysis.sslAnalysis.httpsUsed ? "Yes" : "No"}
+                                </span>
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-100">URL Structure</h4>
+                              <p>
+                                Uses IP Address:{" "}
+                                <span className={analysis.urlStructure.usesIpAddress ? "text-red-400" : "text-green-400"}>
+                                  {analysis.urlStructure.usesIpAddress ? "Yes" : "No"}
+                                </span>
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-100">Content Analysis</h4>
+                              <p>
+                                Brand Impersonation:{" "}
+                                <span className="text-gray-400">
+                                  {analysis.contentAnalysis.brandImpersonation}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold text-gray-100 mb-1">Suspicious Keywords</h3>
+                            {analysis.contentAnalysis.suspiciousKeywords.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {analysis.contentAnalysis.suspiciousKeywords.map((keyword, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="bg-red-900 text-red-200 px-2 py-1 rounded text-xs"
+                                  >
+                                    {keyword}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-gray-400">None detected</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold text-gray-100 mb-1">
+                              Visual Similarity Check
+                            </h3>
+                            <p>{analysis.visualSimilarity.details}</p>
+                          </div>
+
+                          <div className="text-xs text-gray-500">
+                            Analyzed on:{" "}
+                            {new Date(analysis.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         );
     }

@@ -43,6 +43,26 @@ export async function POST(req: NextRequest) {
 
     await Url.create({ url });
 
+    // Generate analysis
+    try {
+      const analysisRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/generate-analysis`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url }),
+        }
+      );
+
+      if (!analysisRes.ok) {
+        console.warn("Failed to generate analysis for URL:", url);
+      }
+    } catch (error) {
+      console.warn("Could not generate analysis:", error);
+    }
+
     return NextResponse.json(
       { success: true, message: "URL stored successfully" },
       { status: 201 }
